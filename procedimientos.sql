@@ -1,9 +1,10 @@
-
+DELIMITER $$
 CREATE PROCEDURE registrarReserva(huesped, habitacion, fecha_inicio, fecha_fin)
 BEGIN
 
 
-END$
+
+END$$
 
 /*. registrarReserva(huesped, habitacion, fecha_inicio, fecha_fin)
 Este procedimiento debe:
@@ -15,9 +16,31 @@ superpuesto.
 • Registrar la reserva con estado Confirmada.
 • Actualizar el estado de la habitación si corresponde. */
 
+DELIMITER $$
 CREATE PROCEDURE registrarConsumo(reserva, tipo_consumo, descripcion, monto)
 BEGIN
-END$
+IF NOT EXISTS (SELECT 1 FROM reservas WHERE id_reserva = reserva) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La reserva no existe.';
+END IF;
+
+IF NOT EXISTS (SELECT 1 FROM reservas WHERE id_reserva = reserva AND estado IN ('Activa', 'Confirmada')) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La reserva no está en estado Activa o Confirmada.';
+END IF;
+IF monto <= 0 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El monto debe ser mayor que cero.';
+END IF;
+
+INSERT INTO consumos (id_reserva, tipo_consumo, descripcion, monto) VALUES (reserva, tipo_consumo, descripcion, monto);
+
+UPDATE TOTAL_HUESPED
+SET total_adeudado = total_adeudado + monto
+WHERE ci_huesped = (SELECT ci_huesped FROM hotel.reservas WHERE id_reserva = reserva);
+
+
+
+
+END$$
+
 /* 2. registrarConsumo(reserva, tipo_consumo, descripcion, monto)
 Este procedimiento debe:
 • Validar que la reserva exista.
@@ -26,9 +49,12 @@ Este procedimiento debe:
 • Registrar el consumo asociado a la reserva.
 • Actualizar el total adeudado por el huésped.
 */
+DELIMITER $$
 CREATE PROCEDURE calcularTotalPorHuesped(huesped)
 BEGIN
-END$
+
+
+END$$
 
 /*calcularTotalPorHuesped(huesped)
 Este procedimiento debe utilizar un cursor.
