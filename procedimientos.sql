@@ -17,29 +17,87 @@ superpuesto.
 • Actualizar el estado de la habitación si corresponde. */
 
 DELIMITER $$
-CREATE PROCEDURE registrarConsumo(reserva, tipo_consumo, descripcion, monto)
+
+CREATE PROCEDURE registrarConsumo(
+    IN p_reserva INT,
+    IN p_tipo_consumo VARCHAR(50),
+    IN p_descripcion VARCHAR(200),
+    IN p_monto DECIMAL(10,2)
+)
 BEGIN
-IF NOT EXISTS (SELECT 1 FROM reservas WHERE id_reserva = reserva) THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La reserva no existe.';
-END IF;
+    -- Variables locales
+    DECLARE v_existe_reserva INT DEFAULT 0;
+    DECLARE v_estado_reserva VARCHAR(50);
+    DECLARE v_ci_huesped VARCHAR(50);
+    DECLARE v_id_estadia INT;
 
-IF NOT EXISTS (SELECT 1 FROM reservas WHERE id_reserva = reserva AND estado IN ('Activa', 'Confirmada')) THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La reserva no está en estado Activa o Confirmada.';
-END IF;
-IF monto <= 0 THEN
-    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El monto debe ser mayor que cero.';
-END IF;
+    -- 1) Verificar que la reserva exista
+    SELECT COUNT(*)
+    INTO v_existe_reserva
+    FROM RESERVA
+    WHERE ID_RESERVA = p_reserva;
 
-INSERT INTO consumos (id_reserva, tipo_consumo, descripcion, monto) VALUES (reserva, tipo_consumo, descripcion, monto);
+    IF v_existe_reserva = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'La reserva no existe.';
+    END IF;
 
-UPDATE TOTAL_HUESPED
-SET total_adeudado = total_adeudado + monto
-WHERE ci_huesped = (SELECT ci_huesped FROM hotel.reservas WHERE id_reserva = reserva);
+    -- 2) Obtener datos de la reserva
+    SELECT ESTADO, CI_HUESPED
+    INTO v_estado_reserva, v_ci_huesped
+    FROM RESERVA
+    WHERE ID_RESERVA = p_reserva;
 
+    -- 3) Verificar que la reserva esté Activa o Confirmada
+    IF v_estado_reserva NOT IN ('Activa', 'Confirmada') THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'La reserva no está en estado Activa o Confirmada.';
+    END IF;
 
+    -- 4) Verificar que el monto sea mayor que cero
+    IF p_monto <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'El monto debe ser mayor que cero.';
+    END IF;
 
+    -- 5) Buscar la estadía asociada a esa reserva
+    SELECT ID_ESTADIA
+    INTO v_id_estadia
+    FROM ESTADIA
+    WHERE ID_RESERVA = p_reserva
+    LIMIT 1;
+
+    -- 6) Si no existe estadía, no se puede registrar el consumo
+    IF v_id_estadia IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'La reserva no tiene una estadía asociada.';
+    END IF;
+
+    -- 7) Insertar el consumo
+    INSERT INTO CONSUMO_ADICIONAL (
+        ID_ESTADIA,
+        TIPO,
+        DESCRIPCION,
+        FECHA,
+        MONTO
+    )
+    VALUES (
+        v_id_estadia,
+        p_tipo_consumo,
+        p_descripcion,
+        CURDATE(),
+        p_monto
+    );
+
+    -- 8) Actualizar TOTAL_HUESPED
+    INSERT INTO TOTAL_HUESPED (CI_HUESPED, TOTAL_ADEUDADO)
+    VALUES (v_ci_huesped, p_monto)
+    ON DUPLICATE KEY UPDATE
+        TOTAL_ADEUDADO = TOTAL_ADEUDADO + p_monto;
 
 END$$
+
+DELIMITER ;
 
 /* 2. registrarConsumo(reserva, tipo_consumo, descripcion, monto)
 Este procedimiento debe:
