@@ -31,7 +31,7 @@ BEGIN
     DECLARE v_ci_huesped VARCHAR(50);
     DECLARE v_id_estadia INT;
 
-    -- 1) Verificar que la reserva exista
+    --Verificamos que la reserva exista
     SELECT COUNT(*)
     INTO v_existe_reserva
     FROM RESERVA
