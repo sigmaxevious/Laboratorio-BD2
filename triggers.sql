@@ -1,6 +1,25 @@
-CREATE TRIGGER
+DELIMITER $$
+CREATE TRIGGER borrar_habitacion
+BEFORE DELETE ON HABITACION
+FOR EACH ROW
 BEGIN
-END$
+
+    -- Variables locales
+    DECLARE v_reserva_existe INT DEFAULT 0;
+
+    -- 1) Verificar si la habitación tiene reservas asociadas
+    SELECT COUNT(*) INTO v_reserva_existe
+    from RESERVA
+    WHERE id_habitacion = OLD.id_habitacion;
+    -- 2) Registrar el intento de borrado en una tabla de auditoría.
+    IF v_reserva_existe > 0 THEN
+        INSERT INTO AUDITORIA(id_habitacion, fecha, usuario_bd, motivo)
+        VALUES(OLD.id_habitacion, CURDATE(), CURRENT_USER(), 'habitacion con reserva asociada');
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'no se puede borrar esta habitacion';
+    END IF;
+END$$
+DELIMITER ;
 /* 1. Trigger de borrado de habitaciones
 Debe:
 • Impedir borrar habitaciones que tengan reservas asociadas.
