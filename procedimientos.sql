@@ -1,10 +1,61 @@
 DELIMITER $$
-CREATE PROCEDURE registrarReserva(huesped, habitacion, fecha_inicio, fecha_fin)
+CREATE PROCEDURE registrarReserva(
+    IN p_huesped VARCHAR(50),
+    IN p_habitacion INT,
+    IN p_fecha_inicio DATE,
+    IN p_fecha_fin DATE
+)
 BEGIN
+    -- Variables locales
+    DECLARE v_huesped_existe INT DEFAULT 0;
+    DECLARE v_habitacion_existe INT DEFAULT 0;
+    DECLARE v_solapamiento INT DEFAULT 0;
 
+    -- 1) Validar que el huésped exista.
+    SELECT COUNT(*) INTO v_huesped_existe 
+    FROM HUESPED 
+    WHERE ci = p_huesped;
 
+    IF v_huesped_existe = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'el huesped no existe';
+    END IF;
+
+    -- 2) Validar que la habitación exista.
+    SELECT COUNT(*) INTO v_habitacion_existe 
+    FROM HABITACION 
+    WHERE id_habitacion = p_habitacion;
+
+    IF v_habitacion_existe = 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'La habitacion no existe';
+    END IF;
+
+    -- 3. Validar que fecha_inicio sea menor que fecha_fin
+    IF p_fecha_inicio >= p_fecha_fin THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'La fecha de inicio debe ser menor que la fecha de fin';
+    END IF;
+
+    -- 4. Verificar solapamiento
+    SELECT COUNT(*) INTO v_solapamiento
+    FROM RESERVA
+    WHERE id_habitacion = p_habitacion
+    AND estado IN ('Confirmada', 'Activa')
+    AND fecha_inicio < p_fecha_fin
+    AND fecha_fin > p_fecha_inicio;
+
+    IF v_solapamiento > 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'La habitacion ya tiene una reserva en ese periodo';
+    END IF;
+
+    -- 5. Registrar la reserva
+    INSERT INTO RESERVA(fecha_inicio, fecha_fin, fecha_reserva, estado, ci_huesped, id_habitacion)
+    VALUES(p_fecha_inicio, p_fecha_fin, CURDATE(), 'Confirmada', p_huesped, p_habitacion);
 
 END$$
+DELIMITER ;
 
 /*. registrarReserva(huesped, habitacion, fecha_inicio, fecha_fin)
 Este procedimiento debe:
