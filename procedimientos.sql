@@ -11,7 +11,7 @@ BEGIN
     DECLARE v_habitacion_existe INT DEFAULT 0;
     DECLARE v_solapamiento INT DEFAULT 0;
 
-    -- 1) Validar que el huésped exista.
+    -- Validar que el huésped exista.
     SELECT COUNT(*) INTO v_huesped_existe 
     FROM HUESPED 
     WHERE ci = p_huesped;
@@ -21,7 +21,7 @@ BEGIN
         SET MESSAGE_TEXT = 'el huesped no existe';
     END IF;
 
-    -- 2) Validar que la habitación exista.
+    -- Validar que la habitación exista.
     SELECT COUNT(*) INTO v_habitacion_existe 
     FROM HABITACION 
     WHERE id_habitacion = p_habitacion;
@@ -31,13 +31,13 @@ BEGIN
         SET MESSAGE_TEXT = 'La habitacion no existe';
     END IF;
 
-    -- 3. Validar que fecha_inicio sea menor que fecha_fin
+    -- Validar que fecha_inicio sea menor que fecha_fin
     IF p_fecha_inicio >= p_fecha_fin THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'La fecha de inicio debe ser menor que la fecha de fin';
     END IF;
 
-    -- 4. Verificar solapamiento
+    -- Verificar solapamiento
     SELECT COUNT(*) INTO v_solapamiento
     FROM RESERVA
     WHERE id_habitacion = p_habitacion
@@ -50,7 +50,7 @@ BEGIN
         SET MESSAGE_TEXT = 'La habitacion ya tiene una reserva en ese periodo';
     END IF;
 
-    -- 5. Registrar la reserva
+    -- Registrar la reserva
     INSERT INTO RESERVA(fecha_inicio, fecha_fin, fecha_reserva, estado, ci_huesped, id_habitacion)
     VALUES(p_fecha_inicio, p_fecha_fin, CURDATE(), 'Confirmada', p_huesped, p_habitacion);
 
@@ -62,7 +62,7 @@ Este procedimiento debe:
 • Validar que el huésped exista.
 • Validar que la habitación exista.
 • Validar que la fecha de inicio sea menor que la fecha de fin.
-Verificar que la habitación no tenga otra reserva confirmada o activa en un período
+• Verificar que la habitación no tenga otra reserva confirmada o activa en un período
 superpuesto.
 • Registrar la reserva con estado Confirmada.
 • Actualizar el estado de la habitación si corresponde. */
@@ -93,38 +93,38 @@ BEGIN
         SET MESSAGE_TEXT = 'La reserva no existe.';
     END IF;
 
-    -- 2) Obtener datos de la reserva
+    -- Obtener datos de la reserva
     SELECT ESTADO, CI_HUESPED
     INTO v_estado_reserva, v_ci_huesped
     FROM RESERVA
     WHERE ID_RESERVA = p_reserva;
 
-    -- 3) Verificar que la reserva esté Activa o Confirmada
+    -- Verificar que la reserva esté Activa o Confirmada
     IF v_estado_reserva NOT IN ('Activa', 'Confirmada') THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'La reserva no está en estado Activa o Confirmada.';
     END IF;
 
-    -- 4) Verificar que el monto sea mayor que cero
+    -- Verificar que el monto sea mayor que cero
     IF p_monto <= 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'El monto debe ser mayor que cero.';
     END IF;
 
-    -- 5) Buscar la estadía asociada a esa reserva
+    -- Buscar la estadía asociada a esa reserva
     SELECT ID_ESTADIA
     INTO v_id_estadia
     FROM ESTADIA
     WHERE ID_RESERVA = p_reserva
     LIMIT 1;
 
-    -- 6) Si no existe estadía, no se puede registrar el consumo
+    -- Si no existe estadía, no se puede registrar el consumo
     IF v_id_estadia IS NULL THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'La reserva no tiene una estadía asociada.';
     END IF;
 
-    -- 7) Insertar el consumo
+    --Insertar el consumo
     INSERT INTO CONSUMO_ADICIONAL (
         ID_ESTADIA,
         TIPO,
@@ -140,7 +140,7 @@ BEGIN
         p_monto
     );
 
-    -- 8) Actualizar TOTAL_HUESPED
+    -- Actualizar TOTAL_HUESPED
     INSERT INTO TOTAL_HUESPED (CI_HUESPED, TOTAL_ADEUDADO)
     VALUES (v_ci_huesped, p_monto)
     ON DUPLICATE KEY UPDATE
