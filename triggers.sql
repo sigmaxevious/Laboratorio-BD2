@@ -30,7 +30,26 @@ Identificador del intento.
 • Fecha del intento.
 • Usuario de base de datos (opcional).
 • Motivo del rechazo. */
-CREATE TRIGGER
+CREATE TRIGGER actualizacion_reserva
+AFTER UPDATE ON RESERVA
+FOR EACH ROW
+BEGIN
+  IF OLD.ESTADO <> 'Finalizada' AND NEW.ESTADO = 'Finalizada' THEN
+
+        UPDATE HABITACION
+        SET ESTADO = 'Disponible'
+        WHERE ID_HABITACION = NEW.ID_HABITACION;
+
+        UPDATE ESTADIA
+        SET FECHA_FIN_ESTADIA = CURDATE()
+        WHERE ID_RESERVA = NEW.ID_RESERVA
+          AND FECHA_FIN_ESTADIA IS NULL;
+
+    END IF;
+END$$
+
+DELIMITER ;
+
 BEGIN
 END$
 /*2. Trigger sobre actualización del estado de una reserva
