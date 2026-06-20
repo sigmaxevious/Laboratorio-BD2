@@ -30,6 +30,8 @@ Identificador del intento.
 • Fecha del intento.
 • Usuario de base de datos (opcional).
 • Motivo del rechazo. */
+
+DELIMITER $$
 CREATE TRIGGER actualizacion_reserva
 AFTER UPDATE ON RESERVA
 FOR EACH ROW
