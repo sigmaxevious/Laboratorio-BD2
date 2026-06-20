@@ -42,8 +42,8 @@ BEGIN
     FROM RESERVA
     WHERE id_habitacion = p_habitacion
     AND estado IN ('Confirmada', 'Activa')
-    AND fecha_inicio < p_fecha_fin
-    AND fecha_fin > p_fecha_inicio;
+    AND FECHAINICIO < p_fecha_fin
+    AND FECHAFIN > p_fecha_inicio;
 
     IF v_solapamiento > 0 THEN
         SIGNAL SQLSTATE '45000'
@@ -51,7 +51,7 @@ BEGIN
     END IF;
 
     -- Registrar la reserva
-    INSERT INTO RESERVA(fecha_inicio, fecha_fin, fecha_reserva, estado, ci_huesped, id_habitacion)
+    INSERT INTO RESERVA(FECHAINICIO, FECHAFIN, FECHARESERVA, estado, ci_huesped, id_habitacion)
     VALUES(p_fecha_inicio, p_fecha_fin, CURDATE(), 'Confirmada', p_huesped, p_habitacion);
 
 END$$
